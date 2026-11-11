@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#18324b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PIB SJC Financeiro">
+  <link rel="manifest" href="manifest.json">
+  <title>Primeira Igreja Batista em São José do Calçado</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root{--navy:#18324b;--blue:#24577a;--bg:#f3f6f9;--green:#16834a;--red:#bd3d3d;--muted:#667085;--line:#e3e8ee}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2939}
+    header{background:var(--navy);color:white;padding:20px max(18px,calc((100% - 1180px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}
+    header h1{font-size:20px;margin:0}header small{opacity:.8}.wrap{max-width:1180px;margin:24px auto;padding:0 16px}
+    .card{background:white;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 2px 8px #1525360a}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+    .metric small{color:var(--muted)}.metric strong{display:block;font-size:25px;margin-top:8px}.green{color:var(--green)}.red{color:var(--red)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tabs button,.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:white;cursor:pointer;font-weight:600}
+    .tabs button{background:#e5edf4;color:var(--navy)}.tabs button.active{background:var(--navy);color:white}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:170px;margin-bottom:12px}
+    label{font-size:13px;font-weight:650;color:#344054}input,select,textarea{font:inherit;padding:10px 11px;border:1px solid #cfd8e3;border-radius:8px;background:white;width:100%}
+    textarea{min-height:70px;resize:vertical}.hidden{display:none!important}.section-title{margin:0 0 14px;font-size:18px}
+    table{width:100%;border-collapse:collapse;min-width:650px}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);font-size:14px}th{color:var(--muted);font-weight:650;background:#fafbfd}
+    .table-wrap{overflow:auto}.actions button{border:0;background:transparent;color:var(--blue);cursor:pointer;margin-right:8px}
+    .muted{color:var(--muted)}.right{margin-left:auto}.notice{padding:11px 13px;border-radius:9px;background:#eef5fb;color:#244a67;margin-bottom:14px}
+    .danger{background:#fff0f0;color:#a52e2e}.login{max-width:420px;margin:8vh auto}.login h2{margin-top:0}
+    .smallbtn{padding:7px 10px;font-size:13px}.pill{font-size:12px;padding:4px 8px;border-radius:20px;background:#edf2f7}
+    footer{text-align:center;color:var(--muted);font-size:12px;padding:28px}
+    .month-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 18px}
+    .month-tabs button{border:1px solid #d5dee8;border-radius:8px;padding:8px 11px;background:#f7f9fb;color:var(--navy);cursor:pointer}
+    .month-tabs button.active{background:var(--navy);border-color:var(--navy);color:white}
+    .monthly-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+    .monthly-metrics .card{padding:12px}.monthly-metrics strong{display:block;font-size:18px;margin-top:5px}
+    @media(max-width:600px){.monthly-metrics{grid-template-columns:1fr}}
+    @media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start;flex-direction:column}}
+    @media(max-width:440px){.grid{grid-template-columns:1fr 1fr}.metric strong{font-size:20px}.wrap{margin:14px auto}}
+    @media print{header,.tabs,.no-print,#loginView,footer{display:none!important}body{background:white}.wrap{max-width:none;margin:0}.card{box-shadow:none;border:0;padding:0}}
+  </style>
+</head>
+<body>
+<header>
+  <div><h1 id="churchTitle">Primeira Igreja Batista em São José do Calçado</h1><small>Fazendo Jesus Conhecido por meio de relacionamento</small></div>
+  <button id="logoutBtn" class="btn hidden">Sair</button>
+</header>
+
+<main id="loginView" class="wrap login">
+  <section class="card">
+    <h2>Acesso ao sistema</h2>
+    <p class="muted">Entre com o e-mail e a senha compartilhados pelos responsáveis da igreja.</p>
+    <form id="loginForm">
+      <div class="field"><label for="email">E-mail de acesso</label><input id="email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn" type="submit" style="width:100%">Entrar</button>
+    </form>
+    <p id="loginMessage" class="muted"></p>
+  </section>
+</main>
+
+<main id="appView" class="wrap hidden">
+  <div id="message" class="notice hidden"></div>
+
+
+  <nav class="tabs no-print">
+    <button class="active" data-tab="dashboard">Resumo</button>
+    <button data-tab="new">Novo lançamento</button>
+    <button data-tab="records">Movimentações</button>
+    <button data-tab="reports">Relatórios</button>
+    <button data-tab="settings">Configurações</button>
+  </nav>
+
+  <section id="tab-dashboard" class="card">
+    <h2 class="section-title">Resumo financeiro</h2>
+    <p class="muted">O saldo é calculado usando o saldo inicial mais todas as entradas menos todas as saídas registradas.</p>
+    <div class="row">
+      <div class="field"><label for="dashFrom">De</label><input type="date" id="dashFrom"></div>
+      <div class="field"><label for="dashTo">Até</label><input type="date" id="dashTo"></div>
+      <button class="btn no-print" id="applyDash">Aplicar período</button>
+    </div>
+    <div id="categorySummary"></div>
+  </section>
+
+  <section id="tab-new" class="card hidden">
+    <h2 class="section-title" id="formTitle">Registrar movimentação</h2>
+    <form id="entryForm">
+      <input type="hidden" id="entryId">
+      <div class="row">
+        <div class="field"><label for="kind">Tipo de movimentação</label><select id="kind" required><option value="entrada">Entrada / arrecadação</option><option value="saida">Saída / despesa</option></select></div>
+        <div class="field"><label for="date">Data</label><input id="date" type="date" required></div>
+        <div class="field"><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="0,00"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="category">Categoria</label><select id="category" required></select></div>
+        <div class="field hidden" id="memberWrap"><label for="memberName">Nome do membro (Dízimo)</label><input id="memberName" placeholder="Nome do dizimista"></div>
+        <div class="field hidden" id="otherDescriptionWrap"><label for="otherDescription">Discrimine a arrecadação (Outros)</label><input id="otherDescription" placeholder="Ex.: bazar, cantina, doação específica"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="description">Descrição / especificação</label><input id="description" required placeholder="Descreva a origem ou finalidade"></div>
+        <div class="field"><label for="paymentMethod">Forma de recebimento/pagamento</label><select id="paymentMethod"><option value="">Não informado</option><option>Dinheiro</option><option>PIX</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Outro</option></select></div>
+      </div>
+      <div class="field"><label for="notes">Observações (opcional)</label><textarea id="notes"></textarea></div>
+      <div class="row"><button class="btn" type="submit">Salvar lançamento</button><button class="btn smallbtn" type="button" id="cancelEdit" style="background:#667085">Limpar</button></div>
+    </form>
+  </section>
+
+  <section id="tab-records" class="card hidden">
+    <h2 class="section-title">Movimentações financeiras</h2>
+    <section aria-label="Consulta por mês">
+      <h3>Consultar por ano e mês</h3>
+      <div class="row no-print"><div class="field" style="max-width:180px"><label for="monthlyYear">Ano</label><select id="monthlyYear"></select></div></div>
+      <div id="monthTabs" class="month-tabs no-print"></div>
+      <div id="monthlyTitle" class="muted"></div>
+      <div class="monthly-metrics">
+        <div class="card"><small>Total de entradas</small><strong id="monthlyIncome" class="green">R$ 0,00</strong></div>
+        <div class="card"><small>Total de saídas</small><strong id="monthlyExpense" class="red">R$ 0,00</strong></div>
+        <div class="card"><small>Resultado do mês</small><strong id="monthlyNet">R$ 0,00</strong></div>
+      </div>
+      <div class="row no-print" style="margin-bottom: 14px;">
+        <button class="btn" id="printMonthlyPdfBtn">Baixar PDF do Mês</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Forma Pagto.</th><th>Valor</th></tr></thead><tbody id="monthlyRecordsBody"></tbody></table></div>
+      <p id="monthlyEmpty" class="muted">Nenhuma movimentação neste mês.</p>
+    </section>
+    <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
+    <h3 class="section-title">Filtros detalhados</h3>
+    <div class="row no-print">
+      <div class="field"><label for="filterKind">Tipo</label><select id="filterKind"><option value="">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option></select></div>
+      <div class="field"><label for="filterFrom">De</label><input type="date" id="filterFrom"></div>
+      <div class="field"><label for="filterTo">Até</label><input type="date" id="filterTo"></div>
+      <button class="btn" id="filterBtn">Filtrar</button>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Valor</th><th class="no-print">Ações</th></tr></thead><tbody id="recordsBody"></tbody></table></div>
+    <p id="recordsEmpty" class="muted">Nenhuma movimentação encontrada.</p>
+  </section>
+
+  <section id="tab-reports" class="card hidden">
+    <h2 class="section-title">Relatórios financeiros</h2>
+    <div class="row no-print">
+      <div class="field"><label for="reportFrom">Data inicial</label><input type="date" id="reportFrom"></div>
+      <div class="field"><label for="reportTo">Data final</label><input type="date" id="reportTo"></div>
+      <button class="btn" id="generateReport">Gerar relatório</button>
+    </div>
+    <div id="reportContent"></div>
+    <div class="row no-print" style="margin-top:14px"><button class="btn" id="printReport">Baixar relatório em PDF</button><button class="btn" id="csvBtn">Exportar CSV</button></div>
+  </section>
+
+  <section id="tab-settings" class="card hidden">
+    <h2 class="section-title">Configurações do caixa</h2>
+    <p class="muted">Informe o saldo que a igreja já possuía antes do primeiro lançamento neste sistema. Não some novamente valores que já estejam registrados nas movimentações.</p>
+    <form id="settingsForm">
+      <div class="field"><label for="openingBalance">Saldo inicial (R$)</label><input type="number" id="openingBalance" min="0" step="0.01" required></div>
+      <button class="btn" type="submit">Salvar saldo inicial</button>
+    </form>
+  </section>
+</main>
+<footer>"Até aqui nos ajudou o Senhor" 1 Samuel 7:12 · Acesso restrito</footer>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://wpuhvkwfavjfbemasolx.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ppj8V_9YNxWnCXcEpRsNkg_AzeWwvv4";
+  const $ = id => document.getElementById(id);
+  const money = n => Number(n || 0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  let db, entries = [], openingBalance = 0, reportRows = [];
+  let monthlyYear = new Date().getFullYear(), monthlyMonth = new Date().getMonth() + 1;
+
+  function message(text, error=false) {
+    $("message").textContent = text;
+    $("message").classList.remove("hidden");
+    $("message").classList.toggle("danger", error);
+    setTimeout(()=>$("message").classList.add("hidden"), 4500);
+  }
+  function categories(kind) {
+    const list = kind === "entrada"
+      ? ["Dízimos","Ofertas","Outros"]
+      : ["Água","Energia elétrica","Internet","Alimentação","Manutenção","Material de limpeza","Missões","Ajuda social","Transporte","Aluguel","Outras despesas"];
+    $("category").innerHTML = list.map(x=>`<option>${x}</option>`).join("");
+    toggleCategoryFields();
+  }
+  function toggleCategoryFields() {
+    const kind = $("kind").value;
+    const cat = $("category").value;
+    $("memberWrap").classList.toggle("hidden", !(kind === "entrada" && cat === "Dízimos"));
+    $("otherDescriptionWrap").classList.toggle("hidden", !(kind === "entrada" && cat === "Outros"));
+  }
+  $("category").addEventListener("change", toggleCategoryFields);
+  function showTab(tab) {
+    document.querySelectorAll("[id^=tab-]").forEach(x=>x.classList.add("hidden"));
+    $("tab-"+tab).classList.remove("hidden");
+    document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));
+    if(tab==="records"){renderMonthlyView();renderRecords();}
+    if(tab==="reports") buildReport();
+  }
+  document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+  $("kind").addEventListener("change",()=>categories($("kind").value));
+  $("loginForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    if(!db) return $("loginMessage").textContent="Configure o Supabase antes de entrar.";
+    $("loginMessage").textContent="Verificando acesso...";
+    const {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});
+    $("loginMessage").textContent=error ? "Não foi possível entrar. Confira o e-mail e a senha." : "";
+    if(!error) await loadApp();
+  });
+  $("logoutBtn").addEventListener("click",async()=>{await db.auth.signOut();location.reload();});
+  async function loadApp(){
+    $("loginView").classList.add("hidden"); $("appView").classList.remove("hidden"); $("logoutBtn").classList.remove("hidden");
+    await loadData(); categories("entrada"); $("date").value=new Date().toISOString().slice(0,10);
+    $("dashFrom").value=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10);
+    $("dashTo").value=new Date().toISOString().slice(0,10); renderDashboard();
+  }
+  async function loadData(){
+    const [er,sr]=await Promise.all([
+      db.from("finance_entries").select("*").order("entry_date",{ascending:false}).order("created_at",{ascending:false}),
+      db.from("church_settings").select("opening_balance").eq("id",1).single()
+    ]);
+    if(er.error) throw er.error;
+    if(sr.error) throw sr.error;
+    entries=er.data||[]; openingBalance=Number(sr.data.opening_balance||0);
+    $("openingBalance").value=openingBalance.toFixed(2); renderDashboard(); renderMonthlyView();
+  }
+  function totals(rows){
+    const income=rows.filter(x=>x.kind==="entrada").reduce((a,x)=>a+Number(x.amount),0);
+    const expense=rows.filter(x=>x.kind==="saida").reduce((a,x)=>a+Number(x.amount),0);
+    return {income,expense,net:income-expense};
+  }
+  function renderDashboard(){
+    const t=totals(entries);
+    const totalBal = money(openingBalance+t.net);
+    if($("balance")) $("balance").textContent=totalBal;
+    if($("incomeTotal")) $("incomeTotal").textContent=money(t.income);
+    if($("expenseTotal")) $("expenseTotal").textContent=money(t.expense);
+    if($("openingTotal")) $("openingTotal").textContent=money(openingBalance);
+    if($("dashBalanceDisplay")) $("dashBalanceDisplay").textContent=totalBal;
+  }
+  const monthNames=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  function renderMonthlyView(){
+    const years=[...new Set(entries.map(x=>Number(String(x.entry_date).slice(0,4))).filter(Number.isFinite))];
+    if(!years.includes(monthlyYear)) years.push(monthlyYear);
+    years.sort((a,b)=>b-a);
+    $("monthlyYear").innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join("");
+    $("monthlyYear").value=String(monthlyYear);
+    $("monthTabs").innerHTML=monthNames.map((name,i)=>`<button type="button" data-month="${i+1}" class="${monthlyMonth===i+1?"active":""}">${name}</button>`).join("");
+    $("monthTabs").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{monthlyMonth=Number(b.dataset.month);renderMonthlyView();}));
+    const prefix=`${monthlyYear}-${String(monthlyMonth).padStart(2,"0")}`;
+    const rows=entries.filter(x=>String(x.entry_date).startsWith(prefix)).sort((a,b)=>a.entry_date.localeCompare(b.entry_date));
+    const t=totals(rows);
+    $("monthlyTitle").textContent=`Movimentações de ${monthNames[monthlyMonth-1]} de ${monthlyYear}`;
+    $("monthlyIncome").textContent=money(t.income);$("monthlyExpense").textContent=money(t.expense);
+    $("monthlyNet").textContent=money(t.net);$("monthlyNet").className=t.net>=0?"green":"red";
+    $("monthlyRecordsBody").innerHTML=rows.map(x=>`<tr><td>${dateBR(x.entry_date)}</td><td>${x.kind==="entrada"?"Entrada":"Saída"}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${esc(x.payment_method||"-")}</td><td class="${x.kind==="entrada"?"green":"red"}">${money(x.amount)}</td></tr>`).join("");
+    $("monthlyEmpty").classList.toggle("hidden",rows.length>0);
+  }
+  $("monthlyYear").addEventListener("change",()=>{monthlyYear=Number($("monthlyYear").value);renderMonthlyView();});
+
+  function renderRecords(){
+    const kind=$("filterKind").value,from=$("filterFrom").value,to=$("filterTo").value;
+    const rows=entries.filter(x=>(!kind||x.kind===kind)&&(!from||x.entry_date>=from)&&(!to||x.entry_date<=to));
+    $("recordsBody").innerHTML=rows.map(x=>`<tr><td>${dateBR(x.entry_date)}</td><td><span class="pill">${x.kind==="entrada"?"Entrada":"Saída"}</span></td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td class="${x.kind==="entrada"?"green":"red"}">${money(x.amount)}</td><td class="actions no-print"><button data-edit="${x.id}">Editar</button><button data-delete="${x.id}">Excluir</button></td></tr>`).join("");
+    $("recordsEmpty").classList.toggle("hidden",rows.length>0);
+    $("recordsBody").querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>editEntry(b.dataset.edit)));
+    $("recordsBody").querySelectorAll("[data-delete]").forEach(b=>b.addEventListener("click",()=>deleteEntry(b.dataset.delete)));
+  }
+  $("filterBtn").addEventListener("click",renderRecords);
+  $("entryForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const kind=$("kind").value,category=$("category").value,other=$("otherDescription").value.trim(),member=$("memberName").value.trim();
+    if(kind==="entrada"&&category==="Outros"&&!other)return message("Discrimine a arrecadação da categoria Outros.",true);
+    const payload={kind,entry_date:$("date").value,amount:Number($("amount").value),category,description:$("description").value.trim(),payment_method:$("paymentMethod").value,notes:$("notes").value.trim()};
+    if(kind==="entrada"&&category==="Dízimos"&&member)payload.description=member+" — "+payload.description;
+    else if(kind==="entrada"&&category==="Outros")payload.description=other+" — "+payload.description;
+    const id=$("entryId").value;
+    const result=id?await db.from("finance_entries").update(payload).eq("id",id):await db.from("finance_entries").insert(payload);
+    if(result.error)return message("Erro ao salvar: "+result.error.message,true);
+    resetForm();await loadData();renderRecords();message("Lançamento salvo com sucesso.");
+  });
+  function resetForm(){ $("entryForm").reset();$("entryId").value="";$("memberName").value="";$("formTitle").textContent="Registrar movimentação";$("date").value=new Date().toISOString().slice(0,10);categories($("kind").value); }
+  $("cancelEdit").addEventListener("click",resetForm);
+  function editEntry(id){
+    const x=entries.find(v=>v.id===id);if(!x)return;
+    showTab("new");$("entryId").value=x.id;$("kind").value=x.kind;categories(x.kind);$("category").value=x.category;
+    $("date").value=x.entry_date;$("amount").value=x.amount;$("description").value=x.description;
+    $("paymentMethod").value=x.payment_method||"";$("notes").value=x.notes||"";
+    $("formTitle").textContent="Editar lançamento";
+    if(x.kind==="entrada"&&x.category==="Dízimos"){const parts=x.description.split(" — ");if(parts.length>1){$("memberName").value=parts.shift();$("description").value=parts.join(" — ");}}
+    else if(x.kind==="entrada"&&x.category==="Outros"){const parts=x.description.split(" — ");if(parts.length>1){$("otherDescription").value=parts.shift();$("description").value=parts.join(" — ");}}
+    toggleCategoryFields();
+  }
+  async function deleteEntry(id){
+    if(!confirm("Tem certeza de que deseja excluir este lançamento?"))return;
+    const {error}=await db.from("finance_entries").delete().eq("id",id);
+    if(error)return message("Erro ao excluir: "+error.message,true);
+    await loadData();renderRecords();message("Lançamento excluído.");
+  }
+  $("settingsForm").addEventListener("submit",async e=>{
+    e.preventDefault();const value=Number($("openingBalance").value);
+    const {error}=await db.from("church_settings").update({opening_balance:value}).eq("id",1);
+    if(error)return message("Erro ao atualizar saldo inicial: "+error.message,true);
+    openingBalance=value;renderDashboard();message("Saldo inicial atualizado.");
+  });
+  function dateBR(s){return s?s.split("-").reverse().join("/"):"";}
+  function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function buildReport(){
+    const from=$("reportFrom").value,to=$("reportTo").value;
+    reportRows=entries.filter(x=>(!from||x.entry_date>=from)&&(!to||x.entry_date<=to));
+    const t=totals(reportRows),balance=openingBalance+t.net;
+    const reportIncomes=reportRows.filter(x=>x.kind==="entrada");
+    const reportExpenses=reportRows.filter(x=>x.kind==="saida");
+    $("reportContent").innerHTML=`<h3>Prestação de contas ${from||"início"} até ${to||"hoje"}</h3>
+      <p>Saldo inicial: <strong>${money(openingBalance)}</strong></p>
+      <p>Total de entradas: <strong class="green">${money(t.income)}</strong></p>
+      <p>Total de saídas: <strong class="red">${money(t.expense)}</strong></p>
+      <h3>Saldo atual do caixa: ${money(balance)}</h3>
+      <h4 style="margin:20px 0 8px;color:var(--green)">Entradas / Arrecadações</h4>
+      <div class="table-wrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Forma Pagto.</th><th>Valor</th></tr></thead><tbody>${reportIncomes.length?reportIncomes.map(x=>`<tr><td>${dateBR(x.entry_date)}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${esc(x.payment_method||"Não inf.")}</td><td class="green">${money(x.amount)}</td></tr>`).join(""):`<tr><td colspan="5" class="muted">Nenhuma entrada no período.</td></tr>`}</tbody></table></div>
+      <h4 style="margin:20px 0 8px;color:var(--red)">Saídas / Despesas</h4>
+      <div class="table-wrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Forma Pagto.</th><th>Valor</th></tr></thead><tbody>${reportExpenses.length?reportExpenses.map(x=>`<tr><td>${dateBR(x.entry_date)}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${esc(x.payment_method||"Não inf.")}</td><td class="red">${money(x.amount)}</td></tr>`).join(""):`<tr><td colspan="5" class="muted">Nenhuma saída no período.</td></tr>`}</tbody></table></div>`;
+  }
+  $("generateReport").addEventListener("click",buildReport);
+  async function loadPdfLibrary(){
+    if(window.jspdf && window.jspdf.jsPDF) return true;
+    const urls=[
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js",
+      "https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"
+    ];
+    for(const url of urls){
+      try{
+        await new Promise((resolve,reject)=>{
+          const script=document.createElement("script");
+          script.src=url;
+          script.onload=resolve;
+          script.onerror=()=>reject(new Error("Falha ao carregar "+url));
+          document.head.appendChild(script);
+        });
+        if(window.jspdf && window.jspdf.jsPDF) return true;
+      }catch(error){ console.warn(error); }
+    }
+    return false;
+  }
+
+  function printReportFallback(){
+    buildReport();
+    const content=$("reportContent").innerHTML;
+    const win=window.open("","_blank");
+    if(!win){
+      message("O navegador bloqueou a janela do relatório. Permita pop-ups para este site e tente novamente.",true);
+      return;
+    }
+    win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+      <title>Relatório financeiro da igreja</title>
+      <style>
+        body{font:12px Arial,sans-serif;color:#222;margin:24px}
+        h2,h3{margin:0 0 12px}p{margin:7px 0}
+        table{width:100%;border-collapse:collapse;margin-top:16px}
+        th,td{border:1px solid #bbb;padding:7px;text-align:left;font-size:11px}
+        th{background:#eee}.green{color:#16834a}.red{color:#bd3d3d}
+        @page{size:A4;margin:15mm}
+      </style></head><body>
+      <div style="text-align:center;margin-bottom:20px;">
+        <h2 style="margin:0;">Primeira Igreja Batista em São José do Calçado</h2>
+        <p style="margin:4px 0;font-style:italic;color:#555;">Fazendo Jesus Conhecido por meio de relacionamento</p>
+      </div>${content}
+      <div style="margin-top:30px;text-align:center;font-style:italic;color:#666;border-top:1px solid #ccc;padding-top:8px;">
+        "Até aqui nos ajudou o Senhor" 1 Samuel 7:12
+      </div>
+      <script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script>
+      </body></html>`);
+    win.document.close();
+  }
+
+  $("printReport").addEventListener("click",async()=>{
+    buildReport();
+    const loaded=await loadPdfLibrary();
+    if(!loaded){
+      message("Não foi possível carregar o gerador automático. Abrindo a opção de impressão para salvar como PDF.",true);
+      printReportFallback();
+      return;
+    }
+    try{
+      const {jsPDF}=window.jspdf;
+      const doc=new jsPDF({unit:"mm",format:"a4",compress:true});
+      const from=$("reportFrom").value,to=$("reportTo").value,t=totals(reportRows);
+      const period=`${from?dateBR(from):"Início"} até ${to?dateBR(to):"Hoje"}`;
+      const left=14,right=196;
+      let y=18;
+      const pageBottom=280;
+      doc.setProperties({title:"Relatório Financeiro - Primeira Igreja Batista em São José do Calçado",subject:"Prestação de contas"});
+      doc.setFont("helvetica","bold");doc.setFontSize(15);
+      doc.text("Primeira Igreja Batista em São José do Calçado",left,y);y+=6;
+      doc.setFont("helvetica","italic");doc.setFontSize(10);
+      doc.text("Fazendo Jesus Conhecido por meio de relacionamento",left,y);y+=8;
+      doc.setFont("helvetica","normal");doc.setFontSize(10);
+      doc.text(`Relatório financeiro: ${period}`,left,y);y+=8;
+      doc.text(`Saldo inicial: ${money(openingBalance)}`,left,y);y+=6;
+      doc.text(`Total de entradas: ${money(t.income)}`,left,y);y+=6;
+      doc.text(`Total de saídas: ${money(t.expense)}`,left,y);y+=6;
+      doc.setFont("helvetica","bold");
+      doc.text(`Saldo final: ${money(openingBalance+t.net)}`,left,y);y+=10;
+
+      const cols=[14,32,58,138,174];
+      function drawTableHeader(sectionTitle, colorHex){
+        if(y + 15 > pageBottom){ doc.addPage(); y = 18; }
+        doc.setFont("helvetica","bold");doc.setFontSize(11);
+        doc.setTextColor(colorHex[0], colorHex[1], colorHex[2]);
+        doc.text(sectionTitle, left, y); y += 6;
+        doc.setFont("helvetica","bold");doc.setFontSize(8);
+        doc.setTextColor(0,0,0);
+        doc.text("Data",cols[0],y);
+        doc.text("Categoria",cols[1],y);
+        doc.text("Descrição",cols[2],y);
+        doc.text("Forma Pagto.",cols[3],y);
+        doc.text("Valor",cols[4],y);y+=3;
+        doc.setDrawColor(120);doc.line(left,y,right,y);y+=5;
+        doc.setFont("helvetica","normal");doc.setFontSize(8);
+      }
+
+      function renderTableRows(list, title, colorHex){
+        drawTableHeader(title, colorHex);
+        if(!list.length){
+          doc.text("Nenhum registro nesta seção.", left, y); y += 8;
+          return;
+        }
+        for(const row of list){
+          const desc=doc.splitTextToSize(String(row.description||""),76);
+          const cat=doc.splitTextToSize(String(row.category||""),24);
+          const pay=doc.splitTextToSize(String(row.payment_method||"-"),32);
+          const lines=Math.max(desc.length,cat.length,pay.length,1);
+          const rowHeight=Math.max(7,lines*4);
+          if(y+rowHeight>pageBottom){
+            doc.addPage();y=18;
+            drawTableHeader(title + " (continuação)", colorHex);
+          }
+          doc.text(dateBR(row.entry_date),cols[0],y);
+          doc.text(cat,cols[1],y);
+          doc.text(desc,cols[2],y);
+          doc.text(pay,cols[3],y);
+          doc.text(money(row.amount),cols[4],y);
+          y+=rowHeight;doc.setDrawColor(220);doc.line(left,y-2,right,y-2);
+        }
+        y += 4;
+      }
+
+      const reportIncomes = reportRows.filter(x => x.kind === "entrada");
+      const reportExpenses = reportRows.filter(x => x.kind === "saida");
+
+      renderTableRows(reportIncomes, "ENTRADAS / ARRECADACÕES", [22, 131, 74]);
+      renderTableRows(reportExpenses, "SAÍDAS / DESPESAS", [189, 61, 61]);
+      const totalPages = doc.internal.getNumberOfPages();
+      for(let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text('"Até aqui nos ajudou o Senhor" 1 Samuel 7:12', left, 287);
+        doc.text(`Página ${i} de ${totalPages}`, right, 287, {align: "right"});
+      }
+      const filename=`relatorio-igreja-${from||"inicio"}-${to||"hoje"}.pdf`;
+      doc.save(filename);
+      message("Relatório PDF gerado. Verifique a pasta de downloads do navegador.");
+    }catch(error){
+      console.error("Erro ao gerar PDF:",error);
+      message("Ocorreu um erro ao gerar o PDF. Abrindo a opção de impressão.",true);
+      printReportFallback();
+    }
+  });
+  $("printMonthlyPdfBtn").addEventListener("click", async () => {
+    const prefix = `${monthlyYear}-${String(monthlyMonth).padStart(2,"0")}`;
+    const rows = entries.filter(x => String(x.entry_date).startsWith(prefix)).sort((a,b) => a.entry_date.localeCompare(b.entry_date));
+    const t = totals(rows);
+    const monthName = monthNames[monthlyMonth - 1];
+
+    const loaded = await loadPdfLibrary();
+    if (!loaded) {
+      const content = `<h3>Prestação de contas: ${monthName} de ${monthlyYear}</h3>` +
+        `<p>Total de entradas: <strong class="green">${money(t.income)}</strong></p>` +
+        `<p>Total de saídas: <strong class="red">${money(t.expense)}</strong></p>` +
+        `<h3>Resultado do mês: ${money(t.net)}</h3>` +
+        `<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>` +
+        rows.map(x => `<tr><td>${dateBR(x.entry_date)}</td><td>${x.kind==="entrada"?"Entrada":"Saída"}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${money(x.amount)}</td></tr>`).join("") +
+        `</tbody></table></div>`;
+
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+          <title>Relatório ${monthName} de ${monthlyYear}</title>
+          <style>body{font:12px Arial,sans-serif;color:#222;margin:24px}h2,h3{margin:0 0 12px}p{margin:7px 0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #bbb;padding:7px;text-align:left;font-size:11px}th{background:#eee}.green{color:#16834a}.red{color:#bd3d3d}@page{size:A4;margin:15mm}</style>
+          </head><body>
+          <div style="text-align:center;margin-bottom:20px;"><h2 style="margin:0;">Primeira Igreja Batista em São José do Calçado</h2><p style="margin:4px 0;font-style:italic;color:#555;">Fazendo Jesus Conhecido por meio de relacionamento</p></div>
+          ${content}
+          <div style="margin-top:30px;text-align:center;font-style:italic;color:#666;border-top:1px solid #ccc;padding-top:8px;">"Até aqui nos ajudou o Senhor" 1 Samuel 7:12</div>
+          <script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script></body></html>`);
+        win.document.close();
+      }
+      return;
+    }
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
+      const left = 14, right = 196, pageBottom = 280;
+      let y = 18;
+
+      doc.setProperties({ title: `Relatório ${monthName} de ${monthlyYear}`, subject: "Prestação de Contas Mensal" });
+      doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+      doc.text("Primeira Igreja Batista em São José do Calçado", left, y); y += 6;
+      doc.setFont("helvetica", "italic"); doc.setFontSize(10);
+      doc.text("Fazendo Jesus Conhecido por meio de relacionamento", left, y); y += 8;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+      doc.text(`Relatório Financeiro: ${monthName} de ${monthlyYear}`, left, y); y += 8;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.text(`Total de entradas: ${money(t.income)}`, left, y); y += 6;
+      doc.text(`Total de saídas: ${money(t.expense)}`, left, y); y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Resultado do mês: ${money(t.net)}`, left, y); y += 10;
+
+      const cols = [14, 32, 58, 138, 174];
+      function drawTableHeader(sectionTitle, colorHex) {
+        if(y + 15 > pageBottom){ doc.addPage(); y = 18; }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+        doc.setTextColor(colorHex[0], colorHex[1], colorHex[2]);
+        doc.text(sectionTitle, left, y); y += 6;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Data", cols[0], y);
+        doc.text("Categoria", cols[1], y);
+        doc.text("Descrição", cols[2], y);
+        doc.text("Forma Pagto.", cols[3], y);
+        doc.text("Valor", cols[4], y); y += 3;
+        doc.setDrawColor(120); doc.line(left, y, right, y); y += 5;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      }
+
+      function renderTableRows(list, title, colorHex) {
+        drawTableHeader(title, colorHex);
+        if (!list.length) {
+          doc.text("Nenhum registro nesta seção.", left, y); y += 8;
+          return;
+        }
+        for (const row of list) {
+          const desc = doc.splitTextToSize(String(row.description || ""), 76);
+          const cat = doc.splitTextToSize(String(row.category || ""), 24);
+          const pay = doc.splitTextToSize(String(row.payment_method || "-"), 32);
+          const lines = Math.max(desc.length, cat.length, pay.length, 1);
+          const rowHeight = Math.max(7, lines * 4);
+          if (y + rowHeight > pageBottom) {
+            doc.addPage(); y = 18;
+            drawTableHeader(title + " (continuação)", colorHex);
+          }
+          doc.text(dateBR(row.entry_date), cols[0], y);
+          doc.text(cat, cols[1], y);
+          doc.text(desc, cols[2], y);
+          doc.text(pay, cols[3], y);
+          doc.text(money(row.amount), cols[4], y);
+          y += rowHeight; doc.setDrawColor(220); doc.line(left, y - 2, right, y - 2);
+        }
+        y += 4;
+      }
+
+      const monthlyIncomes = rows.filter(x => x.kind === "entrada");
+      const monthlyExpenses = rows.filter(x => x.kind === "saida");
+
+      renderTableRows(monthlyIncomes, "ENTRADAS / ARRECADACÕES", [22, 131, 74]);
+      renderTableRows(monthlyExpenses, "SAÍDAS / DESPESAS", [189, 61, 61]);
+
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text('"Até aqui nos ajudou o Senhor" 1 Samuel 7:12', left, 287);
+        doc.text(`Página ${i} de ${totalPages}`, right, 287, { align: "right" });
+      }
+
+      const filename = `relatorio-mensal-${monthlyYear}-${String(monthlyMonth).padStart(2, "0")}.pdf`;
+      doc.save(filename);
+      message(`Relatório em PDF de ${monthName}/${monthlyYear} gerado com sucesso.`);
+    } catch (err) {
+      console.error(err);
+      message("Erro ao gerar PDF mensal.", true);
+    }
+  });
+
+  $("csvBtn").addEventListener("click",()=>{
+    buildReport();const lines=[["Data","Tipo","Categoria","Descrição","Valor"],...reportRows.map(x=>[x.entry_date,x.kind,x.category,x.description,String(x.amount).replace(".",",")])];
+    const csv="\uFEFF"+lines.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="relatorio-financeiro-igreja.csv";a.click();URL.revokeObjectURL(a.href);
+  });
+  if(SUPABASE_URL.startsWith("https://")&&SUPABASE_ANON_KEY.startsWith("sb_publishable_")){
+    db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    db.auth.getSession().then(({data})=>{if(data.session)loadApp().catch(e=>message(e.message,true));});
+    db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){$("appView").classList.add("hidden");$("loginView").classList.remove("hidden");$("logoutBtn").classList.add("hidden");}});
+  }else{$("loginMessage").textContent="O administrador precisa configurar a conexão com o banco de dados.";}
+})();
+</script>
+</body>
+</html>
